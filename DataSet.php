@@ -23,9 +23,22 @@ class DataSet implements DatasetInterface, \IteratorAggregate, \ArrayAccess, \Se
 	protected $data = array();
 
 	/**
+	 * Constructor.
+	 *
+	 * @param mixed $data
+	 */
+	public function __construct($data = null)
+	{
+		if ($data)
+		{
+			$this->bind($data);
+		}
+	}
+
+	/**
 	 * Bind data array into self.
 	 *
-	 * @param array $dataset An aray of multiple data.
+	 * @param array $dataset An array of multiple data.
 	 *
 	 * @throws \InvalidArgumentException
 	 * @return  DataSet Return self to support chaining.
@@ -59,6 +72,100 @@ class DataSet implements DatasetInterface, \IteratorAggregate, \ArrayAccess, \Se
 	}
 
 	/**
+	 * The magic get method is used to get a list of properties from the objects in the data set.
+	 *
+	 * Example: $array = $dataSet->foo;
+	 *
+	 * This will return a column of the values of the 'foo' property in all the objects
+	 * (or values determined by custom property setters in the individual Data's).
+	 * The result array will contain an entry for each object in the list (compared to __call which may not).
+	 * The keys of the objects and the result array are maintained.
+	 *
+	 * @param   string  $property  The name of the data property.
+	 *
+	 * @return  array  An associative array of the values.
+	 */
+	public function __get($property)
+	{
+		$return = array();
+
+		// Iterate through the objects.
+		foreach ($this->data as $key => $data)
+		{
+			// Get the property.
+			$return[$key] = $data->$property;
+		}
+
+		return $return;
+	}
+
+	/**
+	 * The magic isset method is used to check the state of an object property using the iterator.
+	 *
+	 * Example: $array = isset($objectList->foo);
+	 *
+	 * @param   string  $property  The name of the property.
+	 *
+	 * @return  boolean  True if the property is set in any of the objects in the data set.
+	 */
+	public function __isset($property)
+	{
+		$return = array();
+
+		// Iterate through the objects.
+		foreach ($this->data as $data)
+		{
+			// Check the property.
+			$return[] = isset($data->$property);
+		}
+
+		return in_array(true, $return, true) ? true : false;
+	}
+
+	/**
+	 * The magic set method is used to set an object property using the iterator.
+	 *
+	 * Example: $objectList->foo = 'bar';
+	 *
+	 * This will set the 'foo' property to 'bar' in all of the objects
+	 * (or a value determined by custom property setters in the Data).
+	 *
+	 * @param   string  $property  The name of the property.
+	 * @param   mixed   $value     The value to give the data property.
+	 *
+	 * @return  void
+	 */
+	public function __set($property, $value)
+	{
+		// Iterate through the objects.
+		foreach ($this->data as $data)
+		{
+			// Set the property.
+			$data->$property = $value;
+		}
+	}
+
+	/**
+	 * The magic unset method is used to unset an object property using the iterator.
+	 *
+	 * Example: unset($objectList->foo);
+	 *
+	 * This will unset all of the 'foo' properties in the list of Data\Object's.
+	 *
+	 * @param   string  $property  The name of the property.
+	 *
+	 * @return  void
+	 */
+	public function __unset($property)
+	{
+		// Iterate through the objects.
+		foreach ($this->data as $data)
+		{
+			unset($data->$property);
+		}
+	}
+
+	/**
 	 * Property is exist or not.
 	 *
 	 * @param mixed $offset Property key.
@@ -84,7 +191,19 @@ class DataSet implements DatasetInterface, \IteratorAggregate, \ArrayAccess, \Se
 			return null;
 		}
 
-		return $this->$offset;
+		return $this->data[$offset];
+	}
+
+	/**
+	 * Clears the objects in the data set.
+	 *
+	 * @return  DataSet  Returns itself to allow chaining.
+	 */
+	public function clear()
+	{
+		$this->data = array();
+
+		return $this;
 	}
 
 	/**
@@ -97,7 +216,14 @@ class DataSet implements DatasetInterface, \IteratorAggregate, \ArrayAccess, \Se
 	 */
 	public function offsetSet($offset, $value)
 	{
-		$this->data[$offset] = $value;
+		if ($offset)
+		{
+			$this->data[$offset] = $value;
+		}
+		else
+		{
+			array_push($this->data, $value);
+		}
 	}
 
 	/**
@@ -115,11 +241,11 @@ class DataSet implements DatasetInterface, \IteratorAggregate, \ArrayAccess, \Se
 	/**
 	 * Get the data store for iterate.
 	 *
-	 * @return  array The data to be iterator.
+	 * @return  \Traversable The data to be iterator.
 	 */
 	public function getIterator()
 	{
-		return $this->data;
+		return new \ArrayIterator($this->data);
 	}
 
 	/**
@@ -164,5 +290,15 @@ class DataSet implements DatasetInterface, \IteratorAggregate, \ArrayAccess, \Se
 	public function jsonSerialize()
 	{
 		return json_encode($this->data);
+	}
+
+	/**
+	 * Is this data set empty?
+	 *
+	 * @return  boolean Tru if empty.
+	 */
+	public function isNull()
+	{
+		return empty($this->data);
 	}
 }
